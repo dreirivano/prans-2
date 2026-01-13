@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <style>
+    
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height:100vh; display:flex; justify-content:center; align-items:flex-start;
+      background: linear-gradient(270deg, #888888, #000000, #888888);
+      background-size: 600% 600%;
+      animation: backgroundMove 15s ease infinite;
+    }
+
+    @keyframes backgroundMove {
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+
+    .form-box {
+      background: rgba(255,255,255,0.95);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow:0 15px 30px rgba(0,0,0,0.4);
+      width: 100%;
+      max-width: 900px;
+      border:1px solid rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+      margin: 20px 0;
+    }
+
+    .form-box:hover { box-shadow:0 25px 45px rgba(0,0,0,0.2); }
+
+    h2 {
+      text-align:center;
+      margin-bottom:20px;
+      font-size:32px;
+      font-weight:700;
+      background: linear-gradient(90deg, #8e8283, #000000, #393e89);
+      background-size:200% auto;
+      color: transparent;
+      background-clip:text;
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation: shine 3s linear infinite;
+    }
+
+    @keyframes shine { 0%{background-position:0% center} 100%{background-position:200% center} }
+
+    .btn-submit {
+      display:inline-block;
+      text-decoration:none;
+      text-align:center;
+      padding:12px 20px;
+      margin:5px 2px;
+      border-radius:10px;
+      color:white;
+      font-weight:600;
+      background: linear-gradient(90deg, #888888 0%, #000000 100%);
+      border:none;
+      cursor:pointer;
+      transition: transform 0.3s;
+    }
+    .btn-submit:hover { transform: scale(1.05); }
+
+    .calendar-container { margin-top:20px; }
+    .month-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+    .day { padding:15px; background: rgba(255,255,255,0.9); border-radius:8px; text-align:center; font-weight:600; cursor:default; transition: all 0.3s ease; }
+    .day.event { background: linear-gradient(90deg, #888888, #000000); color:white; cursor:pointer; }
+    .day.event:hover { transform: scale(1.1); }
+    .day.empty { background: transparent; box-shadow: none; }
+
+    .flash { margin:10px auto; padding:12px 20px; border-radius:8px; font-weight:600; width:90%; max-width:400px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+    .flash.success { background-color:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+    .flash.error { background-color:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+    ul { margin-top:15px; list-style:none; }
+    li { margin-bottom:5px; padding:5px 10px; background:rgba(200,200,200,0.1); border-radius:5px; }
+  </style>
+</head>
+<body>
+
+<div class="form-box">
+  <h2>Welcome, {{ username }}!</h2>
+
+  <div style="text-align:center; margin-bottom:15px;">
+    <a href="{{ url_for('add_event') }}" class="btn-submit">Add Event</a>
+    <a href="{{ url_for('logout') }}" class="btn-submit">Logout</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, msg in messages %}
+          <div class="flash {{ category }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="calendar-container">
+    <div class="month-nav">
+      <a href="{{ url_for('dashboard', month=prev_month, year=prev_year) }}" class="btn-submit">&lt; Prev</a>
+      <h3>{{ month_name }} {{ year }}</h3>
+      <a href="{{ url_for('dashboard', month=next_month, year=next_year) }}" class="btn-submit">Next &gt;</a>
+    </div>
+
+    <div class="calendar-grid">
+      {% for day in month_days_flat %}
+        {% if day == 0 %}
+          <div class="day empty"></div>
+        {% else %}
+          {% if day in events_by_day %}
+            <a href="{{ url_for('events_by_day', year=year, month=month, day=day) }}" class="day event">{{ day }}</a>
+          {% else %}
+            <div class="day">{{ day }}</div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <h3>My Registrations</h3>
+  <ul>
+    {% for reg in registrations %}
+      <li>{{ reg["name"] }} - {{ reg["event_date"] }}</li>
+    {% else %}
+      <li>No registrations yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Events on {{ day }}/{{ month }}/{{ year }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height:100vh; display:flex; justify-content:center; align-items:center;
+      background: linear-gradient(270deg, #888888, #000000, #888888);
+      background-size: 600% 600%;
+      animation: backgroundMove 15s ease infinite;
+    }
+
+    @keyframes backgroundMove {
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+
+    .form-box {
+      background: rgba(255,255,255,0.95);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow:0 15px 30px rgba(0,0,0,0.4);
+      width: 100%;
+      max-width: 600px;
+      border:1px solid rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+    }
+
+    .form-box:hover { box-shadow:0 25px 45px rgba(0,0,0,0.2); }
+
+    h2 {
+      text-align:center;
+      margin-bottom:20px;
+      font-size:32px;
+      font-weight:700;
+      background: linear-gradient(90deg, #8e8283, #000000, #393e89);
+      background-size:200% auto;
+      color: transparent;
+      background-clip:text;
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation: shine 3s linear infinite;
+    }
+
+    @keyframes shine { 0%{background-position:0% center} 100%{background-position:200% center} }
+
+    .event-list { list-style: none; margin-top:20px; }
+    .event-list li {
+      background: linear-gradient(90deg, #888888, #000000);
+      padding:12px 15px;
+      border-radius:10px;
+      margin-bottom:10px;
+      color:white;
+      font-weight:600;
+      box-shadow:0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .btn-back {
+      display:block;
+      text-align:center;
+      margin-top:20px;
+      padding:12px 15px;
+      background: linear-gradient(90deg, #888888 0%, #000000 100%);
+      color:white;
+      text-decoration:none;
+      border-radius:10px;
+      font-weight:600;
+    }
+    .btn-back:hover { opacity:0.9; }
+  </style>
+</head>
+<body>
+
+<div class="form-box">
+  <h2>Events on {{ day }}/{{ month }}/{{ year }}</h2>
+
+  {% if events %}
+    <ul class="event-list">
+      {% for event in events %}
+        <li>{{ event.name }} - {{ event.event_date }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p style="text-align:center; margin-top:20px;">No events scheduled for this day.</p>
+  {% endif %}
+
+  <a href="{{ url_for('dashboard') }}" class="btn-back">Back to Dashboard</a>
+</div>
+
+</body>
+</html>
