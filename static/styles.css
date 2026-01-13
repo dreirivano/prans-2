@@ -1,0 +1,155 @@
+/* Paste your entire CSS here exactly as given */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: linear-gradient(270deg, #888888, #000000, #888888);
+    background-size: 600% 600%;
+    animation: backgroundMove 15s ease infinite;
+}
+
+@keyframes backgroundMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.form-box {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-width: 450px;
+    border: 1px solid rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.form-box:hover {
+    box-shadow: 0 25px 45px rgba(0,0,0,0.1);
+}
+
+.form-box h2 {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #8e8283, #000000, #393e89);
+    background-size: 200% auto;
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 3s linear infinite;
+}
+
+@keyframes shine {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 14px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.8s ease;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(90deg, #888888 0%, #000000 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.flash-messages {
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.flash {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.flash.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.flash.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.day {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  cursor: default;
+}
+
+.day.event {
+  background: linear-gradient(90deg, #888888 0%, #000000 100%);
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.day.event:hover {
+  transform: scale(1.1);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.day.empty {
+  background: transparent;
+  cursor: default;
+  box-shadow: none;
+}
