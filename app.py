@@ -1,6 +1,6 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import mysql.connector
+import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import calendar
@@ -8,15 +8,47 @@ import calendar
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 
+DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "events.db")
+
+# ---------- DATABASE INITIALIZATION ----------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            created_by INTEGER NOT NULL,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS registrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            event_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (event_id) REFERENCES events(id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
 # ---------- DATABASE CONNECTION ----------
 def get_db_connection():
-    return mysql.connector.connect(
-        host=os.environ.get("DB_HOST"),
-        user=os.environ.get("DB_USER"),
-        password=os.environ.get("DB_PASSWORD"),
-        database=os.environ.get("DB_NAME"),
-        port=int(os.environ.get("DB_PORT", 3306))
-    )
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # ---------- HOME ----------
 @app.route("/")
@@ -41,26 +73,20 @@ def register():
 
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
-
-            cursor.execute("SELECT id FROM users WHERE username=%s", (username,))
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE username=?", (username,))
             if cursor.fetchone():
                 flash("Username already exists", "error")
                 conn.close()
                 return redirect(url_for("register"))
 
             hashed = generate_password_hash(password)
-            cursor.execute(
-                "INSERT INTO users (username, password) VALUES (%s, %s)",
-                (username, hashed)
-            )
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
             conn.commit()
             conn.close()
-
             flash("Account created!", "success")
             return redirect(url_for("login"))
-
-        except mysql.connector.Error as e:
+        except Exception as e:
             flash(f"Database error: {e}", "error")
             return redirect(url_for("register"))
 
@@ -73,22 +99,18 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+        user = cursor.fetchone()
+        conn.close()
 
-            cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
-            user = cursor.fetchone()
-            conn.close()
+        if user and check_password_hash(user["password"], password):
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            return redirect(url_for("dashboard"))
 
-            if user and check_password_hash(user["password"], password):
-                session["user_id"] = user["id"]
-                session["username"] = user["username"]
-                return redirect(url_for("dashboard"))
-
-            flash("Invalid credentials", "error")
-        except mysql.connector.Error as e:
-            flash(f"Database error: {e}", "error")
+        flash("Invalid credentials", "error")
 
     return render_template("login.html")
 
@@ -114,31 +136,25 @@ def dashboard():
     prev_month, prev_year = (month - 1, year) if month > 1 else (12, year - 1)
     next_month, next_year = (month + 1, year) if month < 12 else (1, year + 1)
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM events")
+    events = cursor.fetchall()
 
-        cursor.execute("SELECT * FROM events")
-        events = cursor.fetchall()
+    events_by_day = {}
+    for e in events:
+        e_date = datetime.strptime(e["event_date"], "%Y-%m-%d")
+        if e_date.year == year and e_date.month == month:
+            events_by_day.setdefault(e_date.day, []).append(e)
 
-        events_by_day = {}
-        for e in events:
-            if e["event_date"].year == year and e["event_date"].month == month:
-                day = e["event_date"].day
-                events_by_day.setdefault(day, []).append(e)
-
-        cursor.execute("""
-            SELECT e.name, e.event_date FROM registrations r
-            JOIN events e ON r.event_id = e.id
-            WHERE r.user_id = %s
-            ORDER BY e.event_date
-        """, (session["user_id"],))
-        registrations = cursor.fetchall()
-        conn.close()
-    except mysql.connector.Error as e:
-        flash(f"Database error: {e}", "error")
-        events_by_day = {}
-        registrations = []
+    cursor.execute("""
+        SELECT e.name, e.event_date FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        WHERE r.user_id = ?
+        ORDER BY e.event_date
+    """, (session["user_id"],))
+    registrations = cursor.fetchall()
+    conn.close()
 
     return render_template(
         "dashboard.html",
@@ -165,19 +181,13 @@ def add_event():
         name = request.form["name"]
         date = request.form["event_date"]
 
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO events (name, event_date, created_by) VALUES (%s, %s, %s)",
-                (name, date, session["user_id"])
-            )
-            conn.commit()
-            conn.close()
-            flash("Event added", "success")
-        except mysql.connector.Error as e:
-            flash(f"Database error: {e}", "error")
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO events (name, event_date, created_by) VALUES (?, ?, ?)",
+                       (name, date, session["user_id"]))
+        conn.commit()
+        conn.close()
+        flash("Event added", "success")
         return redirect(url_for("dashboard"))
 
     return render_template("add_event.html")
@@ -188,28 +198,16 @@ def register_event(event_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT id FROM registrations WHERE user_id=%s AND event_id=%s",
-            (session["user_id"], event_id)
-        )
-
-        if cursor.fetchone():
-            flash("Already registered", "error")
-        else:
-            cursor.execute(
-                "INSERT INTO registrations (user_id, event_id) VALUES (%s, %s)",
-                (session["user_id"], event_id)
-            )
-            conn.commit()
-            flash("Registered successfully", "success")
-        conn.close()
-    except mysql.connector.Error as e:
-        flash(f"Database error: {e}", "error")
-
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM registrations WHERE user_id=? AND event_id=?", (session["user_id"], event_id))
+    if cursor.fetchone():
+        flash("Already registered", "error")
+    else:
+        cursor.execute("INSERT INTO registrations (user_id, event_id) VALUES (?, ?)", (session["user_id"], event_id))
+        conn.commit()
+        flash("Registered successfully", "success")
+    conn.close()
     return redirect(url_for("dashboard"))
 
 # ---------- EVENTS BY DAY ----------
@@ -218,20 +216,11 @@ def events_by_day(year, month, day):
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute(
-            "SELECT * FROM events WHERE event_date=%s",
-            (f"{year}-{month:02d}-{day:02d}",)
-        )
-        events = cursor.fetchall()
-        conn.close()
-    except mysql.connector.Error as e:
-        flash(f"Database error: {e}", "error")
-        events = []
-
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM events WHERE event_date=?", (f"{year}-{month:02d}-{day:02d}",))
+    events = cursor.fetchall()
+    conn.close()
     return render_template("events_by_day.html", events=events, year=year, month=month, day=day)
 
 # ---------- RUN ----------
